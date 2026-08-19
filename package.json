@@ -1,0 +1,36 @@
+{
+  "name": "construction-scheme-modify",
+  "version": "1.0.0",
+  "description": "修改施工方案/专项方案（Word .docx）并编写修改意见回复的 Agent 技能。按意见逐条定位修改、输出修改稿与固定格式回复，识别矛盾数值/模板残留/废止规范，图片零改动。| Agent skill that revises construction schemes (Word .docx) per review comments and produces a formal modification reply.",
+  "type": "module",
+  "files": [
+    "SKILL.md",
+    "references",
+    "scripts",
+    "evals"
+  ],
+  "exports": {
+    ".": "./SKILL.md"
+  },
+  "keywords": [
+    "agent-skills",
+    "claude",
+    "claude-code",
+    "skills",
+    "construction",
+    "engineering",
+    "docx",
+    "word",
+    "施工方案",
+    "修改意见"
+  ],
+  "license": "MIT",
+  "author": "pengyuyan888",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PengYuyan888/construction-scheme-modify.git"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
