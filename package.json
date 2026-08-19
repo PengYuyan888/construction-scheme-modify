@@ -1,6 +1,6 @@
 {
   "name": "construction-scheme-modify",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "修改施工方案/专项方案（Word .docx）并编写修改意见回复的 Agent 技能。按意见逐条定位修改、输出修改稿与固定格式回复，识别矛盾数值/模板残留/废止规范，图片零改动。| Agent skill that revises construction schemes (Word .docx) per review comments and produces a formal modification reply.",
   "type": "module",
   "files": [
