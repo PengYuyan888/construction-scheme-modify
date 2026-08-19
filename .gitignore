@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Skill packaging artifacts
+*.skill
+
+# Eval workspace (contains real project documents - never publish)
+*-workspace/
+workspace/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
