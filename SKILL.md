@@ -16,7 +16,7 @@ description: 修改施工方案/专项方案（Word .docx）并编写"修改意�
 
 ## 工作流程
 
-1. **定位文件**：优先使用用户指定路径；用户说"项目里的××文件"时在工作目录查找；链接先下载。核对文件确实存在且是 Word 文档（.docx 或 .doc——扩展名不可信，检查文件头 PK 签名）。
+1. **定位文件**：优先使用用户指定路径；用户说"项目里的××文件"时在工作目录查找；链接先下载。核对文件确实存在且是 Word 相关文档（.docx / .doc / .wps——扩展名不可信，检查文件头：`PK`→zip 系，`D0 CF 11 E0`→OLE 老格式）。**输入可以是 WPS 相关格式（真 .doc、WPS 生成的 .docx、.wps 专有格式），必须能读取；最终产物必须是标准 Word .docx（"原名（修改稿）.docx"）**，转换与验证方法见"文件查看方法降级链"与 `references/docx-editing.md` 第 15 节。
 2. **解析与通读**：见 `references/docx-editing.md` 的解析方法。dump 全文（段落索引+样式+文本）与表格内容，通读方案全文。查看任何文件都按"方法降级链"走，方法不可用时按序换，不要卡住（见"文件查看方法降级链"节）。
 3. **逐条定位意见**：将每条意见映射到具体段落/表格/章节（正文标题多为自动编号，需模拟渲染编号定位；目录可能是过期快照，以正文为准）。
 4. **主动检查冲突与残留**：见"冲突与旧项目残留检查"节。把发现的问题（含方案内部矛盾、跨方案矛盾、模板残留、废止规范）列入问题清单。
@@ -31,8 +31,9 @@ description: 修改施工方案/专项方案（Word .docx）并编写"修改意�
 
 - **Word 文档（.docx）**：
   1. 默认：`zipfile` + `lxml` 直接解析 `word/document.xml`（本技能统一方案，天然绕开 WPS 悬空关系等 python-docx 兼容问题），工具函数见 `scripts/docx_edit.py` 的 `load_doc`/`dump_docx_text`；
-  2. 备选：`python-docx`（仅当文件无 WPS 暗坑时可用于快速读取，也用于最终验证）；
-  3. 兜底：解析失败时查文件头定类型——`PK`→真 docx 重试；`D0 CF 11 E0`→真 .doc 需转换，告知用户转存为 .docx；其他→非 Word 文件，报告用户。
+  2. 备选：`python-docx`（仅当文件无 WPS 暗坑时可用于快速读取，也用于最终验证；WPS 产物报 `KeyError: 'NULL'` 时先用 `strip_null_rels` 移除悬空关系）；
+  3. 兜底：解析失败时查文件头定类型——`PK`→真 docx 重试；`D0 CF 11 E0` 或 `.wps`→老格式需 COM 转换（见下）；其他→非 Word 文件，报告用户。
+- **老格式转换（真 .doc / .wps → .docx）**：按可用性依次尝试——① Word COM（`Word.Application`；注意注册表 `CurVer` 残留旧版 ProgID 会报"未能引发事件"/`CO_E_SERVER_EXEC_FAILURE`，可试 `Word.Application.16` 或 `GetActiveObject` 连已启动实例）；② **WPS COM（`KWPS.Application`，先查 `C:\Program Files (x86)\Kingsoft`、`C:\Program Files\Kingsoft`、`%LOCALAPPDATA%\Kingsoft` 确认安装）**，API 与 Word 兼容：`Documents.Open(路径)` + `SaveAs2(目标, 12)`；③ 都失败→告知用户转存 .docx。**转换产物必须立即验证**（python-docx 可打开或 rId 无悬空），验证不过先修再继续。详见 `references/docx-editing.md` 第 15 节。
 - **图片/流程图（组织架构图、Visio OLE 等）**：
   1. 默认：直接读 `word/media/*` 与 OLE 二进制确认结构，判断是否嵌入对象；
   2. 备选：OCR（Windows.Media.Ocr 中文）读取图中文字，用于核对图内旧名称/错误文字是否需改（注意 mc:Choice 与 mc:Fallback 两处文字同步）；
@@ -58,11 +59,14 @@ description: 修改施工方案/专项方案（Word .docx）并编写"修改意�
 ## 验证清单（全部通过才算完成）
 
 1. 重新解析输出文件，XML 良构；
-2. 逐条断言：每个修改点已生效、旧内容无残留（用关键字符串计数核对）；
+2. 逐条断言：每个修改点已生效、旧内容无残留（用关键字符串计数核对；**断言必须覆盖表格单元格内的文本**——用 `apply_text_fixes` 的深遍历口径做全文计数，不要只查顶层段落）；
 3. rId 完整性：document.xml 中所有 r:embed/r:id 在 rels 中有定义，无指向 NULL 的悬空目标；
 4. python-docx 能正常打开；
 5. 包内 media 文件与修改前一致（图片未动）；
-6. 如改动章节结构：模拟渲染编号确认无"5.0.1"类异常编号，交叉引用同步修正。
+6. 如改动章节结构：模拟渲染编号确认无"5.0.1"类异常编号，交叉引用同步修正；
+7. **渲染级验证（转 PDF）**：对编号、表格、图片类修改，用 COM（Word 或 WPS）`ExportAsFixedFormat` 导出 PDF，用 pypdf/pdfplumber 提取文本，断言关键行真实渲染（如标题行 `1 工程概况`、`1.1 基坑工程概况和特点`）。逻辑编号（ListString/模拟编号）≠ 显示，不可替代本步。方法见 `references/docx-editing.md` 第 14 节。
+
+> 修改一律用 zipfile+lxml 直接写回；不要用 WPS/Word COM 保存作为最终步骤（会合并 run、丢 w:t 尾部空格、清理 media、重写样式集），COM 仅用于格式转换与目录域更新/PDF 导出，且动作后必须重新验证。见 `references/docx-editing.md` 第 13 节。
 
 ## 修改意见回复格式（用户固定要求，仅文本输出）
 
@@ -81,4 +85,4 @@ description: 修改施工方案/专项方案（Word .docx）并编写"修改意�
 
 ## 技术细节
 
-文档解析、文本替换、表格操作、图片保护、编号与目录的处理方法见 `references/docx-editing.md`；常用编辑操作用 `scripts/docx_edit.py` 中的函数，避免重复造轮子。
+文档解析、文本替换、表格操作、图片保护、编号与目录的处理方法见 `references/docx-editing.md`（第 9~15 节为实战踩坑补充：索引系统、样式层级调整检查清单、显式编号兜底、表格单元格替换、WPS 保存规范化、渲染级验证、WPS 文件读取与转换）；常用编辑操作用 `scripts/docx_edit.py` 中的函数，避免重复造轮子（新增：`build_top_level_index`/`elems_between`/`apply_text_fixes`/`make_table_from_template`/`explicit_heading_numbers`/`strip_null_rels`）。

@@ -20,6 +20,8 @@ Revise construction schemes / special schemes (Word .docx) per review comments a
 - **图片零改动**：不编辑任何图片/嵌入对象（Visio 流程图等），做不到的事在过程沟通中告知用户，不写进最终回复。
 - **文件查看降级链**：zipfile+lxml 默认解析 → python-docx 备选 → 查文件头兜底，不卡住。
 - **WPS 兼容**：处理 WPS 生成的悬空关系（`Target="../NULL"`）等 python-docx 打开失败的文档。
+- **WPS 老格式输入**：真 .doc / .wps 专有格式经 COM 转换（Word 失败自动降级 WPS）读取，转换产物立即验证；最终产物始终是标准 Word .docx。
+- **渲染级验证**：编号/表格/图片类修改转 PDF 核对真实渲染，逻辑编号不等于显示。
 
 ---
 
